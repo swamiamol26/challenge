@@ -26,79 +26,111 @@ import org.springframework.web.context.WebApplicationContext;
 @WebAppConfiguration
 public class AccountsControllerTest {
 
-  private MockMvc mockMvc;
+	private MockMvc mockMvc;
 
-  @Autowired
-  private AccountsService accountsService;
+	@Autowired
+	private AccountsService accountsService;
 
-  @Autowired
-  private WebApplicationContext webApplicationContext;
+	@Autowired
+	private WebApplicationContext webApplicationContext;
 
-  @Before
-  public void prepareMockMvc() {
-    this.mockMvc = webAppContextSetup(this.webApplicationContext).build();
+	@Before
+	public void prepareMockMvc() {
+		this.mockMvc = webAppContextSetup(this.webApplicationContext).build();
 
-    // Reset the existing accounts before each test.
-    accountsService.getAccountsRepository().clearAccounts();
-  }
+		// Reset the existing accounts before each test.
+		accountsService.getAccountsRepository().clearAccounts();
+	}
 
-  @Test
-  public void createAccount() throws Exception {
-    this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
-      .content("{\"accountId\":\"Id-123\",\"balance\":1000}")).andExpect(status().isCreated());
+	@Test
+	public void createAccount() throws Exception {
+		this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"accountId\":\"Id-123\",\"balance\":1000}")).andExpect(status().isCreated());
 
-    Account account = accountsService.getAccount("Id-123");
-    assertThat(account.getAccountId()).isEqualTo("Id-123");
-    assertThat(account.getBalance()).isEqualByComparingTo("1000");
-  }
+		Account account = accountsService.getAccount("Id-123");
+		assertThat(account.getAccountId()).isEqualTo("Id-123");
+		assertThat(account.getBalance()).isEqualByComparingTo("1000");
+	}
 
-  @Test
-  public void createDuplicateAccount() throws Exception {
-    this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
-      .content("{\"accountId\":\"Id-123\",\"balance\":1000}")).andExpect(status().isCreated());
+	@Test
+	public void createDuplicateAccount() throws Exception {
+		this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"accountId\":\"Id-123\",\"balance\":1000}")).andExpect(status().isCreated());
 
-    this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
-      .content("{\"accountId\":\"Id-123\",\"balance\":1000}")).andExpect(status().isBadRequest());
-  }
+		this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"accountId\":\"Id-123\",\"balance\":1000}")).andExpect(status().isBadRequest());
+	}
 
-  @Test
-  public void createAccountNoAccountId() throws Exception {
-    this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
-      .content("{\"balance\":1000}")).andExpect(status().isBadRequest());
-  }
+	@Test
+	public void createAccountNoAccountId() throws Exception {
+		this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON).content("{\"balance\":1000}"))
+				.andExpect(status().isBadRequest());
+	}
 
-  @Test
-  public void createAccountNoBalance() throws Exception {
-    this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
-      .content("{\"accountId\":\"Id-123\"}")).andExpect(status().isBadRequest());
-  }
+	@Test
+	public void createAccountNoBalance() throws Exception {
+		this.mockMvc.perform(
+				post("/v1/accounts").contentType(MediaType.APPLICATION_JSON).content("{\"accountId\":\"Id-123\"}"))
+				.andExpect(status().isBadRequest());
+	}
 
-  @Test
-  public void createAccountNoBody() throws Exception {
-    this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON))
-      .andExpect(status().isBadRequest());
-  }
+	@Test
+	public void createAccountNoBody() throws Exception {
+		this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isBadRequest());
+	}
 
-  @Test
-  public void createAccountNegativeBalance() throws Exception {
-    this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
-      .content("{\"accountId\":\"Id-123\",\"balance\":-1000}")).andExpect(status().isBadRequest());
-  }
+	@Test
+	public void createAccountNegativeBalance() throws Exception {
+		this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"accountId\":\"Id-123\",\"balance\":-1000}")).andExpect(status().isBadRequest());
+	}
 
-  @Test
-  public void createAccountEmptyAccountId() throws Exception {
-    this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
-      .content("{\"accountId\":\"\",\"balance\":1000}")).andExpect(status().isBadRequest());
-  }
+	@Test
+	public void createAccountEmptyAccountId() throws Exception {
+		this.mockMvc.perform(post("/v1/accounts").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"accountId\":\"\",\"balance\":1000}")).andExpect(status().isBadRequest());
+	}
 
-  @Test
-  public void getAccount() throws Exception {
-    String uniqueAccountId = "Id-" + System.currentTimeMillis();
-    Account account = new Account(uniqueAccountId, new BigDecimal("123.45"));
-    this.accountsService.createAccount(account);
-    this.mockMvc.perform(get("/v1/accounts/" + uniqueAccountId))
-      .andExpect(status().isOk())
-      .andExpect(
-        content().string("{\"accountId\":\"" + uniqueAccountId + "\",\"balance\":123.45}"));
-  }
+	@Test
+	public void getAccount() throws Exception {
+		String uniqueAccountId = "Id-" + System.currentTimeMillis();
+		Account account = new Account(uniqueAccountId, new BigDecimal("123.45"));
+		this.accountsService.createAccount(account);
+		this.mockMvc.perform(get("/v1/accounts/" + uniqueAccountId)).andExpect(status().isOk())
+				.andExpect(content().string("{\"accountId\":\"" + uniqueAccountId + "\",\"balance\":123.45}"));
+	}
+
+	@Test
+	public void transferAmount() throws Exception {
+		Account account = new Account("acc_Id-1111", new BigDecimal("20000"));
+		this.accountsService.createAccount(account);
+
+		Account account1 = new Account("acc_Id-3333", new BigDecimal("1000"));
+		this.accountsService.createAccount(account1);
+
+		String accountFrom = "acc_Id-1111";
+		String accountTo = "acc_Id-3333";
+		BigDecimal amount = new BigDecimal("5000");
+		this.mockMvc.perform(post("/v1/accounts/transferAmt").contentType(MediaType.APPLICATION_JSON)
+				.param("accountFrom", accountFrom).param("accountTo", accountTo).param("amount", amount.toString()))
+				.andExpect(status().isOk());
+
+	}
+
+	@Test
+	public void transferAmountInsufficientBalance() throws Exception {
+		Account account = new Account("acc_Id-1111", new BigDecimal("20000"));
+		this.accountsService.createAccount(account);
+
+		Account account1 = new Account("acc_Id-3333", new BigDecimal("1000"));
+		this.accountsService.createAccount(account1);
+
+		String accountFrom = "acc_Id-1111";
+		String accountTo = "acc_Id-3333";
+		BigDecimal amount = new BigDecimal("50000");
+		this.mockMvc.perform(post("/v1/accounts/transferAmt").contentType(MediaType.APPLICATION_JSON)
+				.param("accountFrom", accountFrom).param("accountTo", accountTo).param("amount", amount.toString()))
+				.andExpect(status().isBadRequest());
+	}
 }
